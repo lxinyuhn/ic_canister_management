@@ -11,7 +11,7 @@ import Result "mo:base/Result";
 import IC "./ic";
 import Principal "mo:base/Principal";
 
-import Cycles "mo:base/ExperimentalCycles"
+import Cycles "mo:base/ExperimentalCycles";
 
 import Debug "mo:base/Debug";
 
