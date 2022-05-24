@@ -10,6 +10,9 @@ import Error "mo:base/Error";
 import Result "mo:base/Result";
 import IC "./ic";
 import Principal "mo:base/Principal";
+
+import Cycles "mo:base/ExperimentalCycles"
+
 import Debug "mo:base/Debug";
 
 actor class () = self {
@@ -67,6 +70,7 @@ actor class () = self {
         };
 
         let ic: IC.Self = actor("aaaaa-aa");
+        Cycles.add(1_000_000_000_000);
         let result = await ic.create_canister({settings = ?settings});
         result.canister_id
     };
