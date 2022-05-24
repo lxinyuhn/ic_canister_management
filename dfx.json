@@ -4,10 +4,6 @@
       "main": "src/canister_manager/main.mo",
       "type": "motoko"
     },
-    "sample": {
-      "main": "src/sample/main.mo",
-      "type": "motoko"
-    },
     "frontend_assets": {
       "dependencies": [
         "canister_manager"
@@ -28,7 +24,7 @@
       "packtool": ""
     }
   },
-  "dfx": "0.8.4",
+  "dfx": "0.9.2",
   "networks": {
     "local": {
       "bind": "127.0.0.1:8000",

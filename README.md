@@ -16,3 +16,10 @@ dfx canister call canister_manager stop_canister '("xxxx-xxxx-xxxx-xxx-cai","ver
 dfx canister call canister_manager delete_canister '("xxxx-xxxx-xxxx-xxx-cai","ver1")'
 ```
 
+```bash
+dfx canister --wallet=$(dfx identity get-wallet) call canister_manager submit_proposal '("123","upgrade")'
+dfx canister --wallet=$(dfx identity get-wallet) call canister_manager get_proposal '(1)'
+
+dfx identity use identity2
+dfx canister --wallet=$(dfx identity get-wallet) call canister_manager vote '(1, true)'
+```
