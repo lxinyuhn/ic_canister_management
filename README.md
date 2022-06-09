@@ -24,5 +24,5 @@ dfx identity use identity2
 dfx canister --wallet=$(dfx identity get-wallet) call canister_manager vote '(1, true)'
 ```
 
-### 执行截图
+### 第四课 ：执行截图
 ![image](执行截图_20220609213217.png)
