@@ -6,18 +6,97 @@
     <title>canister manager</title>
     <base href="/" />
     <link rel="icon" href="favicon.ico" />
-    <link type="text/css" rel="stylesheet" href="main.css" />
+    <!-- 最新版本的 Bootstrap 核心 CSS 文件 -->
+    <link href="https://fastly.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://fastly.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+    <script src="https://fastly.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js"></script>
   </head>
   <body>
-    <main>
-      <form action="#">
-        <label for="name">actor name: &nbsp;</label>
-        <input id="name" alt="Name" type="text" />
-        <input id="wasm" alt="wasm file" type="file" />
-        <button type="submit">upload</button>
-      </form>
-      <section id="greeting"></section>
+    <main class="col-md-9">
 
+      <div class="panel panel-default">
+        <div class="panel-heading">登录</div>
+        <div class="panel-body">
+          <div id="loginDiv">
+            <button type="button" id="loginBtn">登录</button>
+          </div>
+          <div id="logoutDiv">
+            your ID: <section id="principalId"></section>
+            <button id="signoutBtn">Sign Out</button>
+          </div>          
+        </div>
+      </div>
+
+      <div id="proposalsDiv">              
+        <div class="panel panel-default">
+          <div class="panel-heading">上传wasm二进制文件</div>
+          <div class="panel-body">
+            <div>
+              <form id="form1" action="#">
+                <div class="form-group">
+                  <label for="name">wasm版本名称</label>
+                  <input type="text" class="form-control" id="name" placeholder="Name">
+                </div>
+                <div class="form-group">
+                  <label for="wasm">wasm 文件</label>
+                  <input type="file" class="form-control" id="wasm">
+                </div>
+                <button type="submit" class="btn btn-default">Submit</button>
+              </form>
+              <section id="greeting"></section>
+            </div>
+          </div>
+        </div>      
+
+        <div class="panel panel-default">
+          <div class="panel-heading">增加提案</div>
+          <div class="panel-body">
+            <div>
+              <form id="form2" action="#">
+                <div class="form-group">
+                  <label for="method">Method</label>
+                  <select id="method">
+                    <option>create_canister</option>
+                    <option>install_code</option>
+                    <option>stop_canister</option>
+                    <option>delete_canister</option>
+                  </select> 
+                </div>                
+                <div class="form-group">
+                  <label for="canister_id">canister_id</label>
+                  <select id="canister_id">
+                  </select> 
+                </div>              
+                <div class="form-group">
+                  <label for="ver">wasm版本</label>
+                  <select id="ver">
+                  </select> 
+                </div>              
+                <button type="submit" class="btn btn-default">Submit</button>
+              </form>
+              <section id="greeting"></section>
+            </div>
+          </div>
+        </div>      
+        
+        <div class="panel panel-default">
+          <div class="panel-heading">提案</div>
+          <div class="panel-body" id="table">
+            <table class="table">
+              <tr>
+                <td class="col-md-1">#</td>
+                <td class="col-md-7">title</td>
+                <td class="col-md-2">progress</td>
+                <td class="col-md-1">vote</td>
+                <td class="col-md-1">action</td>
+              </tr>      
+            </table>
+          </div>
+        </div>      
+      </div>
     </main>
+    <div class="col-md-3">
+      <nav></nav>
+    </div>
   </body>
 </html>

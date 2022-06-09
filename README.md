@@ -23,3 +23,6 @@ dfx canister --wallet=$(dfx identity get-wallet) call canister_manager get_propo
 dfx identity use identity2
 dfx canister --wallet=$(dfx identity get-wallet) call canister_manager vote '(1, true)'
 ```
+
+### 执行截图
+![image](xxx.png)

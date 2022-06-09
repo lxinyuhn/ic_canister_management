@@ -1,5 +1,5 @@
 {
-  "canisters": {
+  "canisters": { 
     "canister_manager": {
       "main": "src/canister_manager/main.mo",
       "type": "motoko"
@@ -16,7 +16,7 @@
         "dist/frontend_assets/"
       ],
       "type": "assets"
-    }    
+    } 
   },
   "defaults": {
     "build": {

@@ -28,8 +28,8 @@ actor class () = self {
 
     public type ProposalPayload = {
         method : Text;
-        canister_id : Text;
-        // message : Blob;
+        canister_id : ?Text;
+        ver : ?Text;
     };
 
     public type ProposalState = {
@@ -43,14 +43,15 @@ actor class () = self {
     
     stable var proposal_id_seq = 0;
     stable var proposals =  Trie.empty<Nat, Proposal>();
+    stable var canisters: List.List<Text> = List.nil();
 
     let wasms = HashMap.HashMap<Text,Blob>(3, Text.equal, Text.hash);
     let members: List.List<Text> = List.fromArray([
-        "rwlgt-iiaaa-aaaaa-aaaaa-cai",
-        "rkp4c-7iaaa-aaaaa-aaaca-cai",
-        "rno2w-sqaaa-aaaaa-aaacq-cai"
+        "oekem-ngccb-mnhpq-uhrkz-acnw5-vufl5-hn3cy-hj4u3-ng5yb-6jvkv-kqe",
+        "coerq-x4i4r-sjgmj-dhvgr-iy2dc-3xh7j-nrty6-ewqkn-akvml-xl2kp-oae",
+        "ew5ay-bc5fc-4pvfl-t3xa5-e6cfa-mx3wd-gxu4c-3qvi5-fb36e-n6yrm-fqe"
     ]);
-    let M = 2;
+    let M = 1;
 
     public func uploadWasm(name : Text, wasm: Blob) : async Text {
         wasms.put(name, wasm);
@@ -60,6 +61,15 @@ actor class () = self {
     public func getWasm(name : Text) : async ?Blob {
         wasms.get(name);
     };    
+
+    public query func list_wasms() : async [Text] {
+        var wasms_keys: List.List<Text> = List.nil();
+        for (key in wasms.keys()){
+            wasms_keys := List.push(key, wasms_keys);
+        };
+        List.toArray(wasms_keys)
+    };     
+
 
     public func create_canister(): async IC.canister_id {
         let settings = {
@@ -78,9 +88,7 @@ actor class () = self {
     public func install_code(canister_id: Text, wasm_name: Text): async (){
         let wasm_module = wasms.get(wasm_name);
         switch(wasm_module){
-            case (null){
-
-            };
+            case null {};
             case (?wasm){
                 let ic: IC.Self = actor("aaaaa-aa");
                 let result = await ic.install_code({
@@ -119,10 +127,11 @@ actor class () = self {
         proposals := Trie.put(proposals, proposal_key(id), Nat.equal, proposal).0;
     };
 
-    public shared({caller}) func submit_proposal(canister_id: Text, method: Text) : async (?Nat) {
+    public shared({caller}) func submit_proposal(method: Text, canister_id: ?Text, ver: ?Text) : async (?Nat) {
         let payload: ProposalPayload = {
             method;
             canister_id;
+            ver;
         };
         proposal_id_seq := proposal_id_seq + 1;
         
@@ -146,9 +155,17 @@ actor class () = self {
 
     public query func list_proposals() : async [Proposal] {
         Trie.toArray(proposals, func (k:Nat, v:Proposal): Proposal { v })
-    };      
+    };     
+
+    public query func list_canisters() : async [Text] {
+        List.toArray(canisters)
+    };        
 
     public shared({caller}) func vote(proposal_id: Nat, pass: Bool) : async Result.Result<ProposalState, Text> {
+        let call_account = Principal.toText(caller);
+        Debug.print(debug_show(proposal_id));
+        Debug.print(debug_show(pass));
+        Debug.print(debug_show(call_account));
         switch (proposal_get(proposal_id)) {
             case null { #err("No proposal with ID " # debug_show(proposal_id) # " exists") };
             case (?proposal) {
@@ -156,8 +173,7 @@ actor class () = self {
                 if (state != #open) {
                     return #err("Proposal " # debug_show(proposal_id) # " is not open for voting");
                 };
-            
-                let call_account = Principal.toText(caller);
+                
                 var voters_yes = proposal.voters_yes;
                 let is_member = List.some(members, func (p: Text): Bool {p == call_account});
                 
@@ -190,17 +206,17 @@ actor class () = self {
         };
     };  
 
-    func execute_proposal(proposal_id: Nat) : async Result.Result<ProposalState, Text> {
+    public shared({caller}) func execute_proposal(proposal_id: Nat) : async Result.Result<ProposalState, Text> {
         try {
             switch (proposal_get(proposal_id)) {
                 case null { #err("No proposal with ID " # debug_show(proposal_id) # " exists") };
                 case (?proposal) {
                     var state = proposal.state;
                     if (state != #accepted){
-                        return #err("state err")
+                        return #err("state err");
                     };
                     let payload = proposal.payload;
-                    if (payload.method == "hold"){
+                    if (payload.method == "create_canister"){
                         let canister_id = payload.canister_id;
                         state := #executing;
                         proposal_put(proposal_id, {
@@ -211,33 +227,68 @@ actor class () = self {
                             proposer = proposal.proposer;
                             payload = proposal.payload;                            
                         });                                
-                        // 开始对某个指定的 canister 限权
-                        // await
-                        state := #succeeded;
-                    } else if (payload.method == "release") {
-                        let canister_id = payload.canister_id;
-                        state := #executing;
-                        proposal_put(proposal_id, {
-                            id = proposal.id;
-                            voters_yes = proposal.voters_yes;                        
-                            state;
-                            timestamp = proposal.timestamp;
-                            proposer = proposal.proposer;
-                            payload = proposal.payload;                            
-                        });                            
-                        // 开始对某个指定的 canister 限权
-                        // await
-                        state := #succeeded;
-                    };
 
-                    proposal_put(proposal_id, {
-                        id = proposal.id;
-                        voters_yes = proposal.voters_yes;                              
-                        state;
-                        timestamp = proposal.timestamp;
-                        proposer = proposal.proposer;
-                        payload = proposal.payload;                            
-                    });    
+                        let id = await create_canister();
+                        canisters := List.push(Principal.toText(id), canisters);
+                        state := #succeeded;
+                    } else if (payload.method == "install_code"){
+                        switch (payload.canister_id){
+                            case null { return #err("Null wasm") };
+                            case (?canister_id) {
+                                state := #executing;
+                                proposal_put(proposal_id, {
+                                    id = proposal.id;
+                                    voters_yes = proposal.voters_yes;                      
+                                    state;
+                                    timestamp = proposal.timestamp;
+                                    proposer = proposal.proposer;
+                                    payload = proposal.payload;                            
+                                });                                
+
+                                switch (payload.ver){
+                                    case null { return #err("Null wasm") };
+                                    case (?ver) {
+                                        await install_code(canister_id, ver);
+                                    };
+                                };
+                            };
+                        };
+                        state := #succeeded;
+                    } else if (payload.method == "stop_canister") {
+                        switch (payload.canister_id){
+                            case null { return #err("Null wasm") };
+                            case (?canister_id) {
+                                state := #executing;
+                                proposal_put(proposal_id, {
+                                    id = proposal.id;
+                                    voters_yes = proposal.voters_yes;                      
+                                    state;
+                                    timestamp = proposal.timestamp;
+                                    proposer = proposal.proposer;
+                                    payload = proposal.payload;                            
+                                });                                
+                                await stop_canister(canister_id);
+                            };
+                        };
+                        state := #succeeded;
+                    }  else if (payload.method == "delete_canister") {
+                        switch (payload.canister_id){
+                            case null { return #err("Null wasm") };
+                            case (?canister_id) {
+                                state := #executing;
+                                proposal_put(proposal_id, {
+                                    id = proposal.id;
+                                    voters_yes = proposal.voters_yes;                      
+                                    state;
+                                    timestamp = proposal.timestamp;
+                                    proposer = proposal.proposer;
+                                    payload = proposal.payload;                            
+                                });                                
+                                await delete_canister(canister_id);
+                            };
+                        };
+                        state := #succeeded;
+                    };  
                     #ok(state)                        
                 }
             };
