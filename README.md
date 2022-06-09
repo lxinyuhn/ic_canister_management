@@ -25,4 +25,4 @@ dfx canister --wallet=$(dfx identity get-wallet) call canister_manager vote '(1,
 ```
 
 ### 执行截图
-![image](xxx.png)
+![image](执行截图_20220609213217.png)
