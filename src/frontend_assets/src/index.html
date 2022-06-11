@@ -27,6 +27,17 @@
         </div>
       </div>
 
+      <div class="panel panel-default">
+        <div class="panel-heading">成员</div>
+        <div class="panel-body" id="members">
+          <table class="table">
+            <tr>
+              <td class="col-md-7">principal_id</td>
+            </tr>      
+          </table>
+        </div>
+      </div>            
+
       <div id="proposalsDiv">              
         <div class="panel panel-default">
           <div class="panel-heading">上传wasm二进制文件</div>
@@ -60,6 +71,8 @@
                     <option>install_code</option>
                     <option>stop_canister</option>
                     <option>delete_canister</option>
+                    <option>add_member</option>
+                    <option>del_member</option>
                   </select> 
                 </div>                
                 <div class="form-group">
@@ -72,6 +85,10 @@
                   <select id="ver">
                   </select> 
                 </div>              
+                <div class="form-group">
+                  <label for="ver">principal_id</label>
+                  <input type="text" id="principal_id"></div>
+                </div>                    
                 <button type="submit" class="btn btn-default">Submit</button>
               </form>
               <section id="greeting"></section>

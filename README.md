@@ -26,3 +26,6 @@ dfx canister --wallet=$(dfx identity get-wallet) call canister_manager vote '(1,
 
 ### 第四课 ：执行截图
 ![image](执行截图_20220609213217.png)
+
+### 第五课 ：支持增加和删除小组成员的提案
+![image](5_20220611235706.png)

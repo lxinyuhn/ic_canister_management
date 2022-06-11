@@ -77,6 +77,30 @@ const handleAuthenticated = async (authClient) => {
     }    
   }  
 
+  const members = await canisterManager.list_members();
+  if (members) {
+    const table = document.getElementById("members");
+    let tableHtml = `
+    <table class="table">
+      <tr>
+        <td class="col-md-7">principal_id</td>
+      </tr>  
+    `;  
+    for (let index in members){
+      const member = members[index]
+      console.log("member:", member); 
+      tableHtml += `
+        <tr>
+          <td>${member}</td>
+        </tr>          
+      `;
+    }
+    
+    tableHtml += '</table>';
+    table.innerHTML = tableHtml;
+  }  
+
+
   const warns = await canisterManager.list_wasms();
   console.log("warns:", warns);  
   if (warns) {
@@ -87,7 +111,8 @@ const handleAuthenticated = async (authClient) => {
       ver.options.add(new Option(warns[key],warns[key]));
     }    
   }
-
+  const M = await canisterManager.get_m();
+  console.log("M:", M);
   const proposals = await canisterManager.list_proposals();
   console.log("proposals:", proposals);
   if (proposals) {
@@ -108,11 +133,13 @@ const handleAuthenticated = async (authClient) => {
       tableHtml += `
         <tr>
           <td>${proposal.id}</td>
-          <td>${proposal.payload.method}/${proposal.payload.canister_id}/${proposal.payload.ver}</td>
+          <td>${proposal.payload.method}/${proposal.payload.canister_id}/${proposal.payload.ver}/${proposal.payload.principal_id}</td>
           <td>      
             <div class="progress">
-              <div class="progress-bar" role="progressbar" aria-valuenow="2" aria-valuemin="0" aria-valuemax="100" style="min-width: 2em; width: ${proposal.voters_yes.length* 100 / 3}%;">
-                ${(proposal.voters_yes.length/3 * 100).toFixed(0)}%
+              <div class="progress-bar" role="progressbar" aria-valuenow="2" aria-valuemin="0" aria-valuemax="100" style="min-width: 2em; width: ${
+               ("accepted" in proposal.state || "open" in proposal.state) ? proposal.voters_yes.length* 100 / members.length : 0
+              }%;">
+                ${ ("accepted" in proposal.state || "open" in proposal.state) ? (proposal.voters_yes.length/members.length * 100).toFixed(0) : 0}%
               </div>
             </div>
           </td>
@@ -146,8 +173,8 @@ const handleAuthenticated = async (authClient) => {
       const proposalExecEl = document.getElementById(`execute${proposal.id}`);
       proposalExecEl.onclick = async (e) =>{
         e.preventDefault();
-        await canisterManager.execute_proposal(proposal.id);
-        console.log("execute_proposal:", proposal.id)
+        const res = await canisterManager.execute_proposal(proposal.id);
+        console.log("execute_proposal:", proposal.id, res)
         handleAuthenticated(authClient);
       }        
     }
@@ -188,7 +215,9 @@ const handleAuthenticated = async (authClient) => {
     const method = document.getElementById("method").value.toString();
     const canister_id = document.getElementById("canister_id").value.toString();
     const ver = document.getElementById("ver").value.toString();
-    await canisterManager.submit_proposal(method, canister_id?[canister_id]:[], ver?[ver]:[]);
+    const principal_id = document.getElementById("principal_id").value.toString();
+    
+    await canisterManager.submit_proposal(method, canister_id?[canister_id]:[], ver?[ver]:[], principal_id?[principal_id]:[]);
     handleAuthenticated(authClient);
     return false;
   });

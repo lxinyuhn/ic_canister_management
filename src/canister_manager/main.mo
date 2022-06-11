@@ -1,25 +1,24 @@
-import HashMap "mo:base/HashMap";
-import List "mo:base/List";
-import Trie "mo:base/Trie";
-import Text "mo:base/Text";
 import Blob "mo:base/Blob";
-import Time "mo:base/Time";
-import Nat "mo:base/Nat";
-import Int "mo:base/Int";
-import Error "mo:base/Error";
-import Result "mo:base/Result";
-import IC "./ic";
-import Principal "mo:base/Principal";
-
 import Cycles "mo:base/ExperimentalCycles";
-
 import Debug "mo:base/Debug";
+import Error "mo:base/Error";
+import HashMap "mo:base/HashMap";
+import IC "./ic";
+import Int "mo:base/Int";
+import List "mo:base/List";
+import M "mo:base/Float";
+import Nat "mo:base/Nat";
+import Principal "mo:base/Principal";
+import Result "mo:base/Result";
+import Text "mo:base/Text";
+import Time "mo:base/Time";
+import Trie "mo:base/Trie";
 
-actor class () = self {
+shared(msg) actor class () = self {
     
     public type Proposal = {
         id : Nat;
-        voters_yes : List.List<Text>;
+        voters_yes : [Text];
         state : ProposalState;
         timestamp : Int;
         proposer : Principal;
@@ -30,6 +29,7 @@ actor class () = self {
         method : Text;
         canister_id : ?Text;
         ver : ?Text;
+        principal_id: ?Text;
     };
 
     public type ProposalState = {
@@ -45,13 +45,18 @@ actor class () = self {
     stable var proposals =  Trie.empty<Nat, Proposal>();
     stable var canisters: List.List<Text> = List.nil();
 
-    let wasms = HashMap.HashMap<Text,Blob>(3, Text.equal, Text.hash);
-    let members: List.List<Text> = List.fromArray([
-        "oekem-ngccb-mnhpq-uhrkz-acnw5-vufl5-hn3cy-hj4u3-ng5yb-6jvkv-kqe",
-        "coerq-x4i4r-sjgmj-dhvgr-iy2dc-3xh7j-nrty6-ewqkn-akvml-xl2kp-oae",
-        "ew5ay-bc5fc-4pvfl-t3xa5-e6cfa-mx3wd-gxu4c-3qvi5-fb36e-n6yrm-fqe"
+    stable var members: List.List<Text> = List.fromArray([
+        Principal.toText(msg.caller)
     ]);
-    let M = 1;
+    stable var M: Nat = 1;
+
+    let wasms = HashMap.HashMap<Text,Blob>(3, Text.equal, Text.hash);
+    // List.fromArray([
+    //     "oekem-ngccb-mnhpq-uhrkz-acnw5-vufl5-hn3cy-hj4u3-ng5yb-6jvkv-kqe",
+    //     "coerq-x4i4r-sjgmj-dhvgr-iy2dc-3xh7j-nrty6-ewqkn-akvml-xl2kp-oae",
+    //     "ew5ay-bc5fc-4pvfl-t3xa5-e6cfa-mx3wd-gxu4c-3qvi5-fb36e-n6yrm-fqe"
+    // ]);
+
 
     public func uploadWasm(name : Text, wasm: Blob) : async Text {
         wasms.put(name, wasm);
@@ -70,8 +75,15 @@ actor class () = self {
         List.toArray(wasms_keys)
     };     
 
+    public query func get_m() :async Nat {
+        M
+    };    
 
-    public func create_canister(): async IC.canister_id {
+    public query func list_members() : async [Text] {
+        List.toArray(members)
+    };   
+
+    func create_canister(): async IC.canister_id {
         let settings = {
             freezing_threshold = null;
             controllers = ?[Principal.fromActor(self)];
@@ -85,7 +97,7 @@ actor class () = self {
         result.canister_id
     };
 
-    public func install_code(canister_id: Text, wasm_name: Text): async (){
+    func install_code(canister_id: Text, wasm_name: Text): async (){
         let wasm_module = wasms.get(wasm_name);
         switch(wasm_module){
             case null {};
@@ -101,21 +113,30 @@ actor class () = self {
         };
     };
 
-    public func stop_canister(canister_id: Text): async (){
+    func stop_canister(canister_id: Text): async (){
         let ic: IC.Self = actor("aaaaa-aa");
         await ic.stop_canister({
             canister_id = Principal.fromActor(actor(canister_id));    
         });        
     };
 
-    public func delete_canister(canister_id: Text): async (){
+    func delete_canister(canister_id: Text): async (){
         let ic: IC.Self = actor("aaaaa-aa");
         await ic.delete_canister({
             canister_id = Principal.fromActor(actor(canister_id));    
         });            
     };    
 
-    // DAO
+    func add_member(principal_id: Text): () {
+        members := List.push(principal_id, members);
+        M := Nat.div(Nat.mul(List.size(members)-1, 51), 100) + 1;
+    };
+
+    func del_member(principal_id: Text): () {
+        Debug.print(debug_show(members));
+        members := List.filter(members, func (p: Text): Bool {p != principal_id});
+        Debug.print(debug_show(members));
+    };    
 
     func proposal_key(t: Nat) : Trie.Key<Nat> {
         return { key = t; hash = Int.hash t };
@@ -127,11 +148,12 @@ actor class () = self {
         proposals := Trie.put(proposals, proposal_key(id), Nat.equal, proposal).0;
     };
 
-    public shared({caller}) func submit_proposal(method: Text, canister_id: ?Text, ver: ?Text) : async (?Nat) {
+    public shared({caller}) func submit_proposal(method: Text, canister_id: ?Text, ver: ?Text, principal_id: ?Text) : async (?Nat) {
         let payload: ProposalPayload = {
             method;
             canister_id;
             ver;
+            principal_id;
         };
         proposal_id_seq := proposal_id_seq + 1;
         
@@ -143,7 +165,7 @@ actor class () = self {
             proposer = caller;
             payload;
             state = #open;
-            voters_yes = List.nil();
+            voters_yes = [];
         };
         proposals := Trie.put(proposals, proposal_key(proposal_id), Nat.equal, proposal).0;
         ?proposal_id
@@ -180,8 +202,9 @@ actor class () = self {
                 if (not is_member){
                     return #err("Caller:" # call_account # " is not a member")
                 } else {
-                    if (not List.some(voters_yes, func (p: Text): Bool {p == call_account})){
-                        voters_yes := List.push(call_account, voters_yes);           
+                    let a: List.List<Text> = List.fromArray(voters_yes);
+                    if (not List.some(a, func (p: Text): Bool {p == call_account})){
+                        voters_yes := List.toArray(List.push(call_account, a));           
                     } else {
                         return #err("Caller:" # call_account # " has voted")
                     }
@@ -189,7 +212,7 @@ actor class () = self {
 
                 Debug.print(debug_show(voters_yes));
 
-                if (List.size(voters_yes) >= M) {
+                if (voters_yes.size() >= M) {
                     state := #accepted;
                 };                
                 let updated_proposal = {
@@ -285,6 +308,40 @@ actor class () = self {
                                     payload = proposal.payload;                            
                                 });                                
                                 await delete_canister(canister_id);
+                            };
+                        };
+                        state := #succeeded;
+                    }  else if (payload.method == "add_member") {
+                        switch (payload.principal_id){
+                            case null { return #err("Null principal_id") };
+                            case (?principal_id) {
+                                state := #executing;
+                                proposal_put(proposal_id, {
+                                    id = proposal.id;
+                                    voters_yes = proposal.voters_yes;                      
+                                    state;
+                                    timestamp = proposal.timestamp;
+                                    proposer = proposal.proposer;
+                                    payload = proposal.payload;                            
+                                });                                
+                                add_member(principal_id);
+                            };
+                        };
+                        state := #succeeded;
+                    } else if (payload.method == "del_member") {
+                        switch (payload.principal_id){
+                            case null { return #err("Null principal_id") };
+                            case (?principal_id) {
+                                state := #executing;
+                                proposal_put(proposal_id, {
+                                    id = proposal.id;
+                                    voters_yes = proposal.voters_yes;                      
+                                    state;
+                                    timestamp = proposal.timestamp;
+                                    proposer = proposal.proposer;
+                                    payload = proposal.payload;                            
+                                });                                
+                                del_member(principal_id);
                             };
                         };
                         state := #succeeded;
